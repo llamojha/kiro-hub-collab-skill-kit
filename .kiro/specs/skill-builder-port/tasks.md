@@ -1,0 +1,17 @@
+# Skill-builder port — tasks
+
+## Scope guard
+
+Implement only the local skill authoring flow, mock adapters, direct-Bedrock SSE client integration, AgentCore Harness test-panel integration, and local download described here. Do not add a Registry, marketplace, publication path, remote discovery, shared workspace, or human-human real-time collaboration.
+
+- [ ] **1. Define shared local-skill contracts.** Create `shared/skillContracts.ts` with discriminated inspiration, generation request/event, and validation-result types. Add `shared/skillContracts.test.ts` for allowed first-party/user-provided sources, empty goal rejection, count limits, and unknown-field rejection. Run `npm test -- shared/skillContracts.test.ts`.
+- [ ] **2. Add original first-party example metadata.** Create `src/features/skill-builder/firstPartyExamples.ts` containing only newly authored project examples, local identifiers, and provenance labels. Add a unit test that every example is labeled `first-party-example`; do not copy external content.
+- [ ] **3. Build the request form.** Create `src/features/skill-builder/SkillRequestForm.tsx` for goal, constraints, selection of first-party examples, and user-provided text. Add tests for local source labels, field errors, text limits, and absence of a remote URL/import control.
+- [ ] **4. Build the editable draft surface.** Create `src/features/skill-builder/SkillEditor.tsx` as a controlled text editor with empty, generated, and user-edited states. Test that edits persist through local state changes and invalid events do not replace valid text.
+- [ ] **5. Define mock/live generation transport.** Create `src/features/skill-builder/generationTransport.ts` and `src/features/skill-builder/generationTransport.test.ts`. Implement a deterministic asynchronous mock transport and a typed interface for an SSE transport; test event order and abort behavior without cloud access.
+- [ ] **6. Implement SSE parsing and correlation.** Add an SSE `fetch` implementation with content-type, chunk-size, JSON-shape, event-name, terminal-event, and request-ID checks. Test malformed, duplicate, late, and mismatched events preserve the last valid draft.
+- [ ] **7. Implement generation lifecycle state.** Create `src/features/skill-builder/useSkillGeneration.ts` with a reducer, single active request lock, `AbortController`, status text, retry eligibility, and state preservation. Test cancellation, interruption, terminal success, and safe terminal error.
+- [ ] **8. Compose the skill-builder page.** Create `src/features/skill-builder/SkillBuilderPage.tsx` and integrate it from `src/App.tsx`. Display mock/live mode, inspiration labels, status, editor, download action, and the reserved test-panel mount. Add an app-level test for the complete mock draft flow.
+- [ ] **9. Add local download.** Create `src/features/skill-builder/downloadSkill.ts` and tests. Generate a UTF-8 `text/markdown` Blob named exactly `SKILL.md`, revoke object URLs, and disable the action for an empty draft.
+- [ ] **10. Update user-facing project documentation.** Update `README.md` only after the behavior exists to describe mock mode, the actual event lifecycle, and local download. Confirm no live secret or external copied content was added.
+- [ ] **11. Checkpoint — validate standalone behavior.** Run `npm run typecheck`, `npm test`, `npm run build`, and `npm run verify:standalone`. Manually run `npm run dev` with both public endpoint variables blank and complete the mock portion of the README challenge demo.
