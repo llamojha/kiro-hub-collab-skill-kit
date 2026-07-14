@@ -1,8 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
-import { HttpRequest } from "@smithy/protocol-http";
-import { SignatureV4 } from "@smithy/signature-v4";
-import { Sha256 } from "@aws-crypto/sha256-js";
+import { BedrockAgentCoreClient, InvokeHarnessCommand } from "@aws-sdk/client-bedrock-agentcore";
 import {
   getClientIp,
   getRequestMethod,
@@ -14,7 +11,7 @@ import {
 import { enforceRateLimit } from "../shared/rate-limit";
 import {
   buildHarnessInvocationBody,
-  parseHarnessResponseBody,
+  parseHarnessResponseEvents,
   validateTestSkillRequest,
   type TestSkillRequest,
 } from "./parser";
@@ -78,13 +75,13 @@ export async function handler(event: FunctionUrlEvent): Promise<JsonResponse> {
   const sessionId = request.sessionId ?? `test-${randomUUID()}`;
   const startedAt = Date.now();
   try {
-    const harnessResponse = await invokeHarness({
+    const harnessEvents = await invokeHarness({
       harnessArn,
       region: process.env.HARNESS_REGION?.trim() || process.env.AWS_REGION || DEFAULT_HARNESS_REGION,
       sessionId,
       request,
     });
-    const parsed = parseHarnessResponseBody(harnessResponse);
+    const parsed = parseHarnessResponseEvents(harnessEvents);
     return jsonResponse(200, {
       sessionId,
       response: parsed.text,
@@ -109,70 +106,20 @@ interface InvokeHarnessOptions {
   request: TestSkillRequest;
 }
 
-async function invokeHarness({ harnessArn, region, sessionId, request }: InvokeHarnessOptions): Promise<string> {
-  const hostname = `bedrock-agentcore.${region}.amazonaws.com`;
-  const unsignedRequest = new HttpRequest({
-    protocol: "https:",
-    hostname,
-    method: "POST",
-    path: "/harnesses/invoke",
-    query: { harnessArn },
-    headers: {
-      host: hostname,
-      "content-type": "application/json",
-      accept: "application/json",
-      "x-amzn-bedrock-agentcore-runtime-session-id": sessionId,
-    },
-    body: JSON.stringify(buildHarnessInvocationBody(request)),
+async function invokeHarness({ harnessArn, region, sessionId, request }: InvokeHarnessOptions): Promise<unknown[]> {
+  const client = new BedrockAgentCoreClient({ region, maxAttempts: 2 });
+  const response = await client.send(new InvokeHarnessCommand({
+    harnessArn,
+    runtimeSessionId: sessionId,
+    ...buildHarnessInvocationBody(request),
+  }), {
+    abortSignal: AbortSignal.timeout(HARNESS_REQUEST_TIMEOUT_MS),
   });
+  if (!response.stream) throw new Error("Harness response stream was missing");
 
-  const signer = new SignatureV4({
-    credentials: defaultProvider(),
-    region,
-    service: "bedrock-agentcore",
-    sha256: Sha256,
-  });
-  const signedRequest = await signer.sign(unsignedRequest);
-  const response = await fetch(requestUrl(signedRequest), {
-    method: signedRequest.method,
-    headers: signedHeaders(signedRequest.headers),
-    body: signedRequest.body,
-    signal: AbortSignal.timeout(HARNESS_REQUEST_TIMEOUT_MS),
-  });
-  const responseBody = await response.text();
-  if (!response.ok) {
-    throw new Error(`Harness responded with HTTP ${response.status}`);
-  }
-  return responseBody;
-}
-
-interface SignedRequestLocation {
-  protocol: string;
-  hostname: string;
-  path: string;
-  query?: Record<string, string | string[] | null | undefined>;
-}
-
-function requestUrl(request: SignedRequestLocation): string {
-  const url = new URL(`${request.protocol}//${request.hostname}${request.path}`);
-  for (const [name, value] of Object.entries(request.query ?? {})) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        if (typeof item === "string") url.searchParams.append(name, item);
-      }
-    } else if (typeof value === "string") {
-      url.searchParams.set(name, value);
-    }
-  }
-  return url.toString();
-}
-
-function signedHeaders(headers: Record<string, string | undefined>): Headers {
-  const result = new Headers();
-  for (const [name, value] of Object.entries(headers)) {
-    if (value !== undefined) result.set(name, value);
-  }
-  return result;
+  const events: unknown[] = [];
+  for await (const event of response.stream) events.push(event);
+  return events;
 }
 
 function isHarnessArn(value: string): boolean {

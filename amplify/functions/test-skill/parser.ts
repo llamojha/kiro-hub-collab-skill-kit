@@ -29,6 +29,16 @@ export interface ParsedHarnessResponse {
   usage?: HarnessUsage;
 }
 
+export interface HarnessInvocationBody {
+  maxIterations: number;
+  maxTokens: number;
+  timeoutSeconds: number;
+  messages: Array<{
+    role: "user";
+    content: Array<{ text: string }>;
+  }>;
+}
+
 export function validateTestSkillRequest(value: unknown): TestSkillValidation {
   if (!isRecord(value)) return { ok: false, error: "Request body must be a JSON object" };
   const unknownField = Object.keys(value).find((field) => !TEST_REQUEST_FIELDS.has(field));
@@ -61,7 +71,7 @@ export function validateTestSkillRequest(value: unknown): TestSkillValidation {
   };
 }
 
-export function buildHarnessInvocationBody(request: TestSkillRequest): Record<string, unknown> {
+export function buildHarnessInvocationBody(request: TestSkillRequest): HarnessInvocationBody {
   return {
     maxIterations: 4,
     maxTokens: 1_500,
@@ -83,7 +93,10 @@ export function buildHarnessInvocationBody(request: TestSkillRequest): Record<st
 }
 
 export function parseHarnessResponseBody(body: string): ParsedHarnessResponse {
-  const events = parseJsonEvents(body);
+  return parseHarnessResponseEvents(parseJsonEvents(body));
+}
+
+export function parseHarnessResponseEvents(events: readonly unknown[]): ParsedHarnessResponse {
   const textParts: string[] = [];
   let stopReason = "unknown";
   let harnessLatencyMs: number | undefined;
@@ -91,6 +104,10 @@ export function parseHarnessResponseBody(body: string): ParsedHarnessResponse {
 
   for (const event of events) {
     if (!isRecord(event)) continue;
+    if (event.internalServerException || event.validationException || event.runtimeClientError) {
+      throw new Error("Harness response contained an error event");
+    }
+
     const delta = getRecord(event.contentBlockDelta)?.delta;
     const deltaText = getString(getRecord(delta)?.text);
     if (deltaText) textParts.push(deltaText);
@@ -159,7 +176,7 @@ function parseJsonEvents(body: string): unknown[] {
         events.push(JSON.parse(candidate));
       } catch {
         // Ignore framing or heartbeat lines. If no recognized text remains,
-        // parseHarnessResponseBody fails closed rather than returning raw output.
+        // parseHarnessResponseEvents fails closed rather than returning raw output.
       }
     }
     return events;

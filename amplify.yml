@@ -1,9 +1,12 @@
 version: 1
-frontend:
+backend:
   phases:
-    preBuild:
+    build:
       commands:
         - npm ci --ignore-scripts --no-audit --no-fund
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
     build:
       commands:
         - npm run build

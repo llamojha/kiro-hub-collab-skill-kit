@@ -25,11 +25,12 @@ for (const functionResource of [backend.generateSkill, backend.testSkill]) {
   rateLimitTable.grantReadWriteData(functionResource.resources.lambda);
 }
 
-backend.testSkill.addEnvironment("HARNESS_ARN", process.env.HARNESS_ARN?.trim() ?? "");
-backend.testSkill.addEnvironment(
-  "HARNESS_REGION",
-  process.env.HARNESS_REGION?.trim() || process.env.AWS_REGION || "eu-central-1",
-);
+const harnessArn = process.env.HARNESS_ARN?.trim();
+if (!harnessArn) throw new Error("HARNESS_ARN is required for backend deployment");
+const harnessRegion = process.env.HARNESS_REGION?.trim() || process.env.AWS_REGION || "eu-central-1";
+
+backend.testSkill.addEnvironment("HARNESS_ARN", harnessArn);
+backend.testSkill.addEnvironment("HARNESS_REGION", harnessRegion);
 
 backend.generateSkill.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
   sid: "InvokeNovaLiteOnly",
@@ -43,9 +44,7 @@ backend.generateSkill.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
 backend.testSkill.resources.lambda.addToRolePolicy(new iam.PolicyStatement({
   sid: "InvokeConfiguredAgentCoreHarness",
   actions: ["bedrock-agentcore:InvokeHarness", "bedrock-agentcore:InvokeAgentRuntime"],
-  // The harness ARN is deployment-time configuration, so scope to Harness
-  // resources in this account rather than granting any AgentCore action.
-  resources: [`arn:${backend.stack.partition}:bedrock-agentcore:*:${backend.stack.account}:harness/*`],
+  resources: [harnessArn],
 }));
 
 const generateSkillUrl = backend.generateSkill.resources.lambda.addFunctionUrl({

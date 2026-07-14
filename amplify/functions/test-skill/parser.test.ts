@@ -3,6 +3,7 @@ import {
   MAX_HARNESS_OUTPUT_CHARS,
   buildHarnessInvocationBody,
   parseHarnessResponseBody,
+  parseHarnessResponseEvents,
   redactAndBoundHarnessOutput,
   validateTestSkillRequest,
 } from "./parser";
@@ -72,6 +73,20 @@ describe("Harness response parsing", () => {
     });
   });
 
+  it("parses decoded AgentCore SDK events", () => {
+    expect(parseHarnessResponseEvents([
+      { messageStart: { role: "assistant" } },
+      { contentBlockDelta: { contentBlockIndex: 0, delta: { text: "Review complete." } } },
+      { messageStop: { stopReason: "end_turn" } },
+      { metadata: { metrics: { latencyMs: 99 }, usage: { inputTokens: 10, outputTokens: 3, totalTokens: 13 } } },
+    ])).toEqual({
+      text: "Review complete.",
+      stopReason: "end_turn",
+      harnessLatencyMs: 99,
+      usage: { inputTokens: 10, outputTokens: 3, totalTokens: 13 },
+    });
+  });
+
   it("parses newline-framed event data", () => {
     const parsed = parseHarnessResponseBody([
       'data: {"contentBlockDelta":{"delta":{"text":"Checked"}}}',
@@ -92,9 +107,12 @@ describe("Harness response parsing", () => {
     expect(output.endsWith("[OUTPUT_TRUNCATED]")).toBe(true);
   });
 
-  it("rejects empty or unrecognized Harness responses", () => {
+  it("rejects empty, unrecognized, or error Harness responses", () => {
     expect(() => parseHarnessResponseBody('{"unexpected":"shape"}')).toThrow(
       "Harness response did not contain recognized text output",
     );
+    expect(() => parseHarnessResponseEvents([
+      { runtimeClientError: { message: "internal detail" } },
+    ])).toThrow("Harness response contained an error event");
   });
 });
