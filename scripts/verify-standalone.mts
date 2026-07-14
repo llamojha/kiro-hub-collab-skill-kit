@@ -5,6 +5,13 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requiredFiles = [
   "package.json",
+  "package-lock.json",
+  ".npmignore",
+  "LICENSE",
+  "NOTICE.md",
+  "README.md",
+  "CONTRIBUTING.md",
+  "SECURITY.md",
   "src/main.tsx",
   "src/App.tsx",
   ".kiro/README.md",
@@ -15,7 +22,20 @@ const requiredFiles = [
   ".kiro/prompts/generate-skill.md",
   ".kiro/skills/skill-authoring/SKILL.md",
 ];
-const scanRoots = ["src", "shared", "amplify", ".env.example"];
+const scanRoots = [
+  "src",
+  "shared",
+  "amplify",
+  ".kiro",
+  ".env.example",
+  "README.md",
+  "CONTRIBUTING.md",
+  "SECURITY.md",
+  "NOTICE.md",
+  "package.json",
+  "amplify.yml",
+  "index.html",
+];
 const forbiddenPatterns = [
   /KIROHUB_REGISTRY_ID/,
   /kirohub\.dev/,

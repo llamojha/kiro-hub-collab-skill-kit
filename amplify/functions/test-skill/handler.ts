@@ -25,6 +25,7 @@ const TEST_RATE_LIMIT = {
   windowSeconds: 60 * 60,
 };
 const DEFAULT_HARNESS_REGION = "eu-central-1";
+const HARNESS_REQUEST_TIMEOUT_MS = 50_000;
 
 export async function handler(event: FunctionUrlEvent): Promise<JsonResponse> {
   if (getRequestMethod(event) !== "POST") {
@@ -136,6 +137,7 @@ async function invokeHarness({ harnessArn, region, sessionId, request }: InvokeH
     method: signedRequest.method,
     headers: signedHeaders(signedRequest.headers),
     body: signedRequest.body,
+    signal: AbortSignal.timeout(HARNESS_REQUEST_TIMEOUT_MS),
   });
   const responseBody = await response.text();
   if (!response.ok) {

@@ -2,7 +2,7 @@
 
 Kiro Collab Skill Kit is a standalone React and AWS Amplify project for drafting, refining, testing, and downloading Kiro `SKILL.md` files with an AI assistant. It is intentionally extractable: it has no dependency on the surrounding repository or a hosted service.
 
-> **Project status:** The repository includes a standalone browser skill-builder and direct generation/test backend foundations, with local mock configuration available by default. The `.kiro` specifications define the scoped completion, reliability, testing, and hardening work. Current type and test validation issues in restricted implementation files are recorded below as project blockers, not documentation workarounds.
+> **Project status:** The standalone browser skill-builder, direct Bedrock generation function, and AgentCore Harness test function are implemented, with local mock configuration enabled by default. Local tests, type checking, production build, and standalone verification pass. No AWS resources or live Bedrock/Harness calls have been verified yet.
 
 ## MVP scope
 
@@ -25,7 +25,7 @@ graph LR
   SPA --> DL[Download local SKILL.md]
 ```
 
-The browser never receives AWS credentials, Bedrock credentials, Harness identifiers, or server-side access-control configuration. Planned backend paths are `amplify/functions/generate-skill/` and `amplify/functions/test-skill/`; the frontend integration belongs under `src/` and shared contracts under `shared/`.
+The browser never receives AWS credentials, Bedrock credentials, Harness identifiers, or server-side access-control configuration. Backend functions live under `amplify/functions/generate-skill/` and `amplify/functions/test-skill/`; the frontend integration belongs under `src/` and shared local inspiration under `shared/`.
 
 ## Prerequisites
 
@@ -44,7 +44,7 @@ From this nested project root:
 
 ```bash
 cd kiro-collab-skill-kit
-npm install
+npm ci
 cp .env.example .env.local
 npm run dev
 ```
@@ -56,7 +56,7 @@ VITE_GENERATE_API_URL=
 VITE_TEST_SKILL_API_URL=
 ```
 
-Vite serves the application at `http://localhost:5174` by default. Mock mode must remain visibly labeled in the UI when the skill-builder port is implemented; it must make no cloud calls.
+Vite serves the application at `http://localhost:5174` by default. Mock mode is visibly labeled and makes no generation, Harness, or other AWS API calls. The current page styling loads Tailwind's browser CDN, so initial page rendering is not fully offline; no application data is intentionally sent to that CDN.
 
 ## Environment variables
 
@@ -79,13 +79,14 @@ npm run typecheck
 npm test
 npm run build
 npm run verify:standalone
+npm pack --dry-run
 ```
 
-`npm run test:watch` runs Vitest interactively. `npm run test:live:generation` intentionally exits non-zero until the direct Bedrock backend is configured; it is a guardrail, not a substitute for mock tests. After backend code exists, use `npm run sandbox` in a separate terminal to deploy an isolated Amplify sandbox before exercising live endpoints.
+`npm run test:watch` runs Vitest interactively. `npm run test:live:generation` skips without a cloud call unless `RUN_LIVE_GENERATION=1` and a Bedrock Region are explicitly configured; it is not a substitute for mock tests. After local checks pass and deployment is explicitly approved, use `npm run sandbox` in a separate terminal to deploy an isolated Amplify sandbox before exercising live endpoints.
 
 ## Challenge demo script
 
-Use this short demonstration after the skill-builder and test specs are implemented:
+Use this short demonstration to verify the implemented local workflow:
 
 1. Start in mock mode with the two `VITE_*_API_URL` values blank and run `npm run dev`.
 2. Open `http://localhost:5174`; confirm the UI labels the session as mock mode.
@@ -97,7 +98,7 @@ Use this short demonstration after the skill-builder and test specs are implemen
 
 ## AWS deployment with Amplify Hosting
 
-The included `amplify.yml` is a monorepo configuration whose application root is `kiro-collab-skill-kit`. Connect the parent repository in Amplify Hosting, select that configuration, and configure the Hosting application to build this nested root. Amplify executes `npm install` and `npm run build` inside `kiro-collab-skill-kit`, then serves its `dist/` output.
+The included `amplify.yml` is a monorepo configuration whose application root is `kiro-collab-skill-kit`. Connect the parent repository in Amplify Hosting, select that configuration, and configure the Hosting application to build this nested root. Amplify executes `npm ci --ignore-scripts` and `npm run build` inside `kiro-collab-skill-kit`, then serves its `dist/` output.
 
 Before a live deployment:
 
@@ -120,7 +121,9 @@ Before a live deployment:
 
 Bundled inspiration examples are original first-party examples, as recorded in [NOTICE.md](NOTICE.md). Do not add copied skills or examples from external sources. Content associated with Kiro Hub may be added only after a license, author, and source audit documents that redistribution is permitted; see the policy in `NOTICE.md`.
 
-Contributions should preserve the standalone boundary: no references to parent-project paths, production environments, Registry services, or marketplaces.
+Contributions should preserve the standalone boundary: no references to parent-project paths, production environments, Registry services, or marketplaces. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, scope, provenance, and validation requirements.
+
+Report suspected vulnerabilities privately according to [SECURITY.md](SECURITY.md); do not include secrets or sensitive reproduction data in a public issue.
 
 ## Future extensions
 

@@ -83,15 +83,17 @@ export const handler = responseStreaming.streamifyResponse(async (event, respons
   });
   const emit = (name: string, data: unknown) => stream.write(sseEvent(name, data));
   emit("status", { stage: "accepted", maxAttempts: MAX_ATTEMPTS });
+  emit("status", { stage: "validating" });
 
   let invalidReason = "";
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    emit("status", { stage: attempt === 1 ? "generating" : "retrying", attempt });
+    emit("status", { stage: "generating", attempt });
     try {
       const modelOutput = await generateWithNova(request, invalidReason || undefined);
       const extracted = extractSkillMarkdown(modelOutput);
       if (extracted.valid) {
-        emit("result", {
+        emit("status", { stage: "finalizing" });
+        emit("complete", {
           skillMarkdown: extracted.markdown,
           sourceAttribution: sourceAttributions(request.sources),
           model: NOVA_LITE_MODEL_ID,

@@ -2,7 +2,9 @@ import { isRecord } from "../shared/http";
 import { validateSkillMarkdown } from "../generate-skill/validation";
 
 export const MAX_TEST_PROMPT_CHARS = 2_000;
+export const MAX_HARNESS_OUTPUT_CHARS = 12_000;
 export const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-_]{32,99}$/;
+const TEST_REQUEST_FIELDS = new Set(["skillMarkdown", "prompt", "sessionId"]);
 
 export interface TestSkillRequest {
   skillMarkdown: string;
@@ -29,6 +31,8 @@ export interface ParsedHarnessResponse {
 
 export function validateTestSkillRequest(value: unknown): TestSkillValidation {
   if (!isRecord(value)) return { ok: false, error: "Request body must be a JSON object" };
+  const unknownField = Object.keys(value).find((field) => !TEST_REQUEST_FIELDS.has(field));
+  if (unknownField) return { ok: false, error: `Unknown request field: ${unknownField}` };
   if (typeof value.skillMarkdown !== "string") return { ok: false, error: "skillMarkdown must be a string" };
 
   const skillMarkdown = value.skillMarkdown.trim();
@@ -117,12 +121,26 @@ export function parseHarnessResponseBody(body: string): ParsedHarnessResponse {
     }
   }
 
+  const text = redactAndBoundHarnessOutput(textParts.join(""));
+  if (!text) throw new Error("Harness response did not contain recognized text output");
+
   return {
-    text: textParts.join(""),
+    text,
     stopReason,
     ...(harnessLatencyMs !== undefined ? { harnessLatencyMs } : {}),
     ...(usage ? { usage } : {}),
   };
+}
+
+export function redactAndBoundHarnessOutput(value: string): string {
+  const redacted = value
+    .replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, "[REDACTED_AWS_ACCESS_KEY]")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, "Bearer [REDACTED]")
+    .replace(/\b(?:authorization|password|secret|token)\s*[:=]\s*[^\s,;]+/gi, (match) => `${match.split(/\s*[:=]\s*/, 1)[0]}=[REDACTED]`)
+    .replace(/\barn:[^\s"'<>]+/gi, "[REDACTED_ARN]")
+    .trim();
+  if (redacted.length <= MAX_HARNESS_OUTPUT_CHARS) return redacted;
+  return `${redacted.slice(0, MAX_HARNESS_OUTPUT_CHARS)}\n[OUTPUT_TRUNCATED]`;
 }
 
 function parseJsonEvents(body: string): unknown[] {
@@ -140,8 +158,8 @@ function parseJsonEvents(body: string): unknown[] {
       try {
         events.push(JSON.parse(candidate));
       } catch {
-        // Ignore framing or heartbeat lines; a response with no JSON events
-        // intentionally produces an empty text result rather than throwing.
+        // Ignore framing or heartbeat lines. If no recognized text remains,
+        // parseHarnessResponseBody fails closed rather than returning raw output.
       }
     }
     return events;

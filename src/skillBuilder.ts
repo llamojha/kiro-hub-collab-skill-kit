@@ -370,12 +370,12 @@ export function toSkillSlug(value: string): string {
   return slug || "untitled-skill";
 }
 
-export function createSkillDownloadName(title: string): string {
-  return `${toSkillSlug(title)}-SKILL.md`;
+export function createSkillDownloadName(): string {
+  return "SKILL.md";
 }
 
-export function downloadSkill(markdown: string, title: string): string {
-  const fileName = createSkillDownloadName(title);
+export function downloadSkill(markdown: string): string {
+  const fileName = createSkillDownloadName();
   const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");

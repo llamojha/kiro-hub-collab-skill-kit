@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_HARNESS_OUTPUT_CHARS,
   buildHarnessInvocationBody,
   parseHarnessResponseBody,
+  redactAndBoundHarnessOutput,
   validateTestSkillRequest,
 } from "./parser";
 
@@ -38,6 +40,13 @@ describe("test-skill input validation", () => {
     });
   });
 
+  it("rejects unknown request fields before invoking AWS", () => {
+    expect(validateTestSkillRequest({ skillMarkdown: validSkill, harnessArn: "client-controlled" })).toMatchObject({
+      ok: false,
+      error: "Unknown request field: harnessArn",
+    });
+  });
+
   it("rejects incomplete SKILL.md content before invoking AWS", () => {
     expect(validateTestSkillRequest({ skillMarkdown: "# Incomplete" })).toMatchObject({
       ok: false,
@@ -70,5 +79,22 @@ describe("Harness response parsing", () => {
       "data: [DONE]",
     ].join("\n"));
     expect(parsed).toMatchObject({ text: "Checked", stopReason: "max_tokens" });
+  });
+
+  it("redacts sensitive identifiers and bounds output before returning it", () => {
+    const output = redactAndBoundHarnessOutput(
+      `authorization: Bearer example-token arn:aws:bedrock-agentcore:eu-central-1:123456789012:harness/private ${"x".repeat(MAX_HARNESS_OUTPUT_CHARS)}`,
+    );
+    expect(output).not.toContain("example-token");
+    expect(output).not.toContain("123456789012");
+    expect(output).toContain("[REDACTED]");
+    expect(output).toContain("[REDACTED_ARN]");
+    expect(output.endsWith("[OUTPUT_TRUNCATED]")).toBe(true);
+  });
+
+  it("rejects empty or unrecognized Harness responses", () => {
+    expect(() => parseHarnessResponseBody('{"unexpected":"shape"}')).toThrow(
+      "Harness response did not contain recognized text output",
+    );
   });
 });

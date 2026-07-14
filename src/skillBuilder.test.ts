@@ -73,8 +73,7 @@ describe("offline-first behavior", () => {
 
   it("creates a deterministic, safe download filename", () => {
     expect(toSkillSlug("AWS: Café / Incident Plan!")).toBe("aws-cafe-incident-plan");
-    expect(createSkillDownloadName("AWS: Café / Incident Plan!")).toBe("aws-cafe-incident-plan-SKILL.md");
-    expect(createSkillDownloadName("???")).toBe("untitled-skill-SKILL.md");
+    expect(createSkillDownloadName()).toBe("SKILL.md");
   });
 
   it("marks generated offline content with attributed local sources", () => {

@@ -1,7 +1,24 @@
 {
   "name": "kiro-collab-skill-kit",
   "version": "0.1.0",
+  "description": "A standalone local-first browser workspace for generating, editing, testing, and downloading Kiro SKILL.md files.",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/llamojha/kiro-hub-collab-skill-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/llamojha/kiro-hub-collab-skill-kit/issues"
+  },
+  "homepage": "https://github.com/llamojha/kiro-hub-collab-skill-kit#readme",
+  "keywords": [
+    "kiro",
+    "skill",
+    "amazon-bedrock",
+    "aws-amplify",
+    "agentcore"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22"

@@ -8,6 +8,7 @@ import { isRecord } from "../shared/http";
 export const MAX_GENERATION_PROMPT_CHARS = 6_000;
 export const MAX_CURRENT_DRAFT_CHARS = 4_000;
 export const MAX_SKILL_MARKDOWN_CHARS = 60_000;
+const GENERATION_REQUEST_FIELDS = new Set(["prompt", "currentDraft", "reference"]);
 
 export interface SourceAttribution {
   id: string;
@@ -42,6 +43,8 @@ export function validateGenerateSkillRequest(value: unknown): RequestValidation 
   if (value.sources !== undefined) {
     return { ok: false, error: "sources are selected by the server and must not be supplied by clients" };
   }
+  const unknownField = Object.keys(value).find((field) => !GENERATION_REQUEST_FIELDS.has(field));
+  if (unknownField) return { ok: false, error: `Unknown request field: ${unknownField}` };
 
   const prompt = value.prompt.trim();
   if (prompt.length < 12) return { ok: false, error: "prompt must contain at least 12 characters" };
@@ -81,6 +84,8 @@ function validateUserReference(
 ): { ok: true; value?: UserProvidedReference } | { ok: false; error: string } {
   if (value === undefined) return { ok: true };
   if (!isRecord(value)) return { ok: false, error: "reference must be an object" };
+  const unknownField = Object.keys(value).find((field) => field !== "label" && field !== "content");
+  if (unknownField) return { ok: false, error: `Unknown reference field: ${unknownField}` };
   const content = optionalText(value.content, "reference.content", MAX_REFERENCE_CONTEXT_CHARACTERS);
   if (!content.ok) return content;
   if (!content.value) return { ok: false, error: "reference.content must be a non-empty string" };
@@ -109,7 +114,7 @@ export function selectServerSources(
   if (reference) {
     sources.push({
       id: "user-provided-reference",
-      title: reference.label,
+      title: "User-provided reference",
       content: reference.content,
     });
   }

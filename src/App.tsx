@@ -53,10 +53,6 @@ function messageId(): number {
   return Date.now() + Math.floor(Math.random() * 1_000);
 }
 
-function sourceTitleFromDraft(draft: string): string {
-  return draft.match(/^#\s+(.+)$/m)?.[1]?.trim() || "collaborative-skill";
-}
-
 function ModeBadge({ label, live }: { label: string; live: boolean }) {
   return (
     <p
@@ -228,7 +224,7 @@ export default function App() {
 
   const handleDownload = useCallback(() => {
     if (!draft.trim()) return;
-    const fileName = downloadSkill(draft, sourceTitleFromDraft(draft));
+    const fileName = downloadSkill(draft);
     setDownloadNotice(`Downloaded ${fileName}`);
   }, [draft]);
 

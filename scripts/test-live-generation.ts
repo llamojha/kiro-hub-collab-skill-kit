@@ -1,11 +1,10 @@
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
+import { NOVA_LITE_MODEL_ID } from "../amplify/backend-config";
 import {
   buildGenerationPrompt,
   extractSkillMarkdown,
   validateGenerateSkillRequest,
 } from "../amplify/functions/generate-skill/validation";
-
-const modelId = "amazon.nova-lite-v1:0";
 
 async function main(): Promise<void> {
   if (process.env.RUN_LIVE_GENERATION !== "1") {
@@ -27,7 +26,7 @@ async function main(): Promise<void> {
   // This script calls Converse and intentionally creates no AWS resources.
   const client = new BedrockRuntimeClient({ region });
   const response = await client.send(new ConverseCommand({
-    modelId,
+    modelId: NOVA_LITE_MODEL_ID,
     messages: [{
       role: "user",
       content: [{ text: buildGenerationPrompt(validation.value) }],
@@ -43,7 +42,7 @@ async function main(): Promise<void> {
   if (!extracted.valid) throw new Error(`Nova Lite output was not a valid SKILL.md: ${extracted.reason}`);
 
   console.log(JSON.stringify({
-    modelId,
+    modelId: NOVA_LITE_MODEL_ID,
     status: "valid-skill-generated",
     characters: extracted.markdown.length,
     stopReason: response.stopReason ?? "unknown",
