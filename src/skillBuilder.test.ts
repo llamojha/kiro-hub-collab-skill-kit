@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { vi } from "vitest";
 import { INSPIRATION_CATALOG, MAX_REFERENCE_CONTEXT_CHARACTERS } from "../shared/inspiration/catalog";
 import {
   buildMockSkill,
   createSkillDownloadName,
   generationModeLabel,
+  generateSkill,
   harnessModeLabel,
   parseGenerationPayload,
   parseHarnessResponse,
@@ -50,6 +52,35 @@ describe("Skill Builder API contracts", () => {
       message: "Slow down",
       retryAfterSeconds: 12,
     });
+  });
+
+  it("returns a complete draft without waiting for a subsequently truncated stream", async () => {
+    const encoder = new TextEncoder();
+    let pullCount = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pullCount += 1;
+        if (pullCount === 1) {
+          controller.enqueue(encoder.encode('event: complete\ndata: {"skillMarkdown":"# Ready"}\n\n'));
+          return;
+        }
+        controller.error(new Error("Connection terminated after the terminal event"));
+      },
+    }, { highWaterMark: 0 });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, {
+      status: 200,
+      headers: { "content-type": "text/event-stream; charset=utf-8" },
+    })));
+
+    const events: string[] = [];
+    await expect(generateSkill("https://example.test/generate", {
+      prompt: "Create a skill",
+      currentDraft: "",
+      inspiration: [],
+    }, (event) => events.push(event.kind))).resolves.toBe("# Ready");
+    expect(events).toEqual(["complete"]);
+    expect(pullCount).toBe(1);
+    vi.unstubAllGlobals();
   });
 
   it("maps Harness request and common response fields", () => {

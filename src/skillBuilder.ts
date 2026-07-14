@@ -222,6 +222,7 @@ export async function generateSkill(
   const decoder = new TextDecoder();
   let buffer = "";
   let latestContent: string | undefined;
+  let complete = false;
 
   const emit = (block: string) => {
     const frame = parseSseBlock(block);
@@ -230,6 +231,7 @@ export async function generateSkill(
     onEvent(event);
     if (event.content) latestContent = event.content;
     if (event.kind === "error") throw new ApiRequestError(event.message, event.retryAfterSeconds);
+    if (event.kind === "complete") complete = true;
   };
 
   try {
@@ -242,6 +244,10 @@ export async function generateSkill(
         const separatorLength = buffer[boundary] === "\r" ? 4 : 2;
         buffer = buffer.slice(boundary + separatorLength);
         emit(block);
+        if (complete) {
+          await reader.cancel().catch(() => undefined);
+          return latestContent;
+        }
         boundary = buffer.search(/\r?\n\r?\n/);
       }
       if (done) break;
