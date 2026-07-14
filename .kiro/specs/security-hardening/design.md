@@ -13,7 +13,7 @@ Apply defense in depth at browser, HTTP, function, direct-Bedrock, Harness, logg
 | SSE generation | `amplify/functions/generate-skill/handler.ts` | Origin check, request validation, event/output caps, deadline, safe errors, direct Bedrock permission. |
 | Harness test | `amplify/functions/test-skill/handler.ts` | Origin check, bounded payload, deadline, output allowlist, redaction, specific Harness permission. |
 | Backend configuration | `amplify/functions/*/resource.ts` | Backend-only environment variables; no secret or identifier enters a frontend build. |
-| Hosting | `amplify.yml` | Nested app root, reproducible build command, static `dist/` artifacts only. |
+| Hosting | `amplify.yml` | Repository-root reproducible build command and static `dist/` artifacts only. |
 | Provenance | `NOTICE.md`, `.kiro/**` | First-party/user-provided policy and required license/author/source audit. |
 
 ## Input validation

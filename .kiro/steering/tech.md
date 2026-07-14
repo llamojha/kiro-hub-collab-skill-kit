@@ -63,4 +63,4 @@ Before presenting a change, run the targeted test, then `npm run typecheck`, `np
 
 ## Hosting
 
-`amplify.yml` defines `kiro-collab-skill-kit` as the Amplify Hosting app root. Builds should run within this nested project, output `dist/`, and avoid exposing backend-only environment variables to the browser.
+`amplify.yml` defines a single Amplify Hosting frontend build from the repository root. Builds should output `dist/` and avoid exposing backend-only environment variables to the browser.

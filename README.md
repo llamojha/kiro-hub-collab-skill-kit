@@ -98,7 +98,7 @@ Use this short demonstration to verify the implemented local workflow:
 
 ## AWS deployment with Amplify Hosting
 
-The included `amplify.yml` is a monorepo configuration whose application root is `kiro-collab-skill-kit`. Connect the parent repository in Amplify Hosting, select that configuration, and configure the Hosting application to build this nested root. Amplify executes `npm ci --ignore-scripts` and `npm run build` inside `kiro-collab-skill-kit`, then serves its `dist/` output.
+The included `amplify.yml` builds this standalone application from the repository root. Connect this repository in Amplify Hosting and select the `main` branch. Amplify executes `npm ci --ignore-scripts --no-audit --no-fund` and `npm run build`, then serves the generated `dist/` output.
 
 Before a live deployment:
 
